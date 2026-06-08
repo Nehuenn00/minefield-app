@@ -15,6 +15,26 @@
 <meta property="og:image" content="https://yourdomain.com/og.png"/>
 <meta property="og:type" content="website"/>
 
+<!-- Farcaster SDK — must load BEFORE anything else so ready() fires ASAP -->
+<script type="module">
+  import { sdk } from 'https://esm.sh/@farcaster/miniapp-sdk@0.0.27';
+  window.__farcasterSdk = sdk;
+  try {
+    await sdk.actions.ready({ disableNativeGestures: false });
+  } catch(e) { console.warn('Farcaster ready() failed:', e); }
+  try {
+    const ctx = await sdk.context;
+    window.__farcasterContext = ctx;
+    if (ctx?.user?.username) {
+      const el = document.getElementById('wallet-status');
+      const btn = document.getElementById('btn-farcaster');
+      if (el) el.textContent = '✓ @' + ctx.user.username;
+      if (btn) btn.classList.add('connected');
+      window._farcasterUser = ctx.user;
+    }
+  } catch(e) { console.warn('Farcaster context failed:', e); }
+</script>
+
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Bebas+Neue&family=Inter:wght@300;400;600&display=swap" rel="stylesheet"/>
@@ -1252,24 +1272,6 @@ function shareScore(win, time) {
 // INIT
 // ═══════════════════════════════════════════
 window.addEventListener('load', () => {
-  // Try to init Farcaster SDK if inside Mini App
-  try {
-    const script = document.createElement('script');
-    script.type = 'module';
-    script.textContent = `
-      try {
-        const { sdk } = await import('https://esm.sh/@farcaster/miniapp-sdk');
-        await sdk.actions.ready();
-        const ctx = await sdk.context;
-        if(ctx?.user?.username) {
-          document.getElementById('wallet-status').textContent = '✓ @' + ctx.user.username;
-          document.getElementById('btn-farcaster').classList.add('connected');
-          window._farcasterUser = ctx.user;
-        }
-      } catch(e) {}
-    `;
-    document.head.appendChild(script);
-  } catch(e) {}
   setLang('en');
   showSplash();
 });
