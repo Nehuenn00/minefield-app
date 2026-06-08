@@ -20,7 +20,7 @@
     "ogTitle": "MINEFIELD — Web3 Minesweeper",
     "ogDescription": "The classic Minesweeper reimagined for Farcaster. Connect, play, survive.",
     "ogImageUrl": "https://minefield-app-gray.vercel.app/og.png",
-    "requiredChains": ["eip155:8453"],
+    "requiredChains": 8453,
     "screenshotUrls": [
       "https://minefield-app-gray.vercel.app/screenshots/screen1.png",
       "https://minefield-app-gray.vercel.app/screenshots/screen2.png",
