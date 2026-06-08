@@ -1,0 +1,31 @@
+{
+  "accountAssociation": {
+    "header": "REPLACE_WITH_SIGNED_HEADER_FROM_WARPCAST_TOOL",
+    "payload": "REPLACE_WITH_PAYLOAD",
+    "signature": "REPLACE_WITH_SIGNATURE"
+  },
+  "miniapp": {
+    "version": "1",
+    "name": "MINEFIELD",
+    "iconUrl": "https://yourdomain.com/icon.png",
+    "homeUrl": "https://yourdomain.com",
+    "splashImageUrl": "https://yourdomain.com/splash.png",
+    "splashBackgroundColor": "#0a0e1a",
+    "subtitle": "Web3 Minesweeper on Farcaster",
+    "description": "The classic Minesweeper reimagined for the decentralized web. Connect your Farcaster or Base wallet, choose your difficulty, survive the field and share your score!",
+    "webhookUrl": "https://yourdomain.com/api/webhook",
+    "primaryCategory": "games",
+    "tags": ["minesweeper", "games", "web3", "farcaster", "base"],
+    "heroImageUrl": "https://yourdomain.com/hero.png",
+    "tagline": "Survive the field. Earn your glory.",
+    "ogTitle": "MINEFIELD — Web3 Minesweeper",
+    "ogDescription": "The classic Minesweeper reimagined for Farcaster. Connect, play, survive.",
+    "ogImageUrl": "https://yourdomain.com/og.png",
+    "requiredChains": ["eip155:8453"],
+    "screenshotUrls": [
+      "https://yourdomain.com/screenshots/screen1.png",
+      "https://yourdomain.com/screenshots/screen2.png",
+      "https://yourdomain.com/screenshots/screen3.png"
+    ]
+  }
+}
