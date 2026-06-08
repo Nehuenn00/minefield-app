@@ -7,25 +7,17 @@
   "miniapp": {
     "version": "1",
     "name": "MINEFIELD",
-    "iconUrl": "https://minefield-app-gray.vercel.app/icon.png",
-    "homeUrl": "https://minefield-app-gray.vercel.app",
-    "splashImageUrl": "https://minefield-app-gray.vercel.app/splash.png",
+    "iconUrl": "https://minefield-app.vercel.app/icon.png",
+    "homeUrl": "https://minefield-app.vercel.app",
+    "splashImageUrl": "https://minefield-app.vercel.app/splash.png",
     "splashBackgroundColor": "#0a0e1a",
     "subtitle": "Web3 Minesweeper on Farcaster",
     "description": "The classic Minesweeper reimagined for the decentralized web. Connect your Farcaster or Base wallet, choose your difficulty, survive the field and share.",
-    "webhookUrl": "https://minefield-app-gray.vercel.app/api/webhook",
     "primaryCategory": "games",
     "tags": ["minesweeper", "games", "web3", "farcaster", "base"],
-    "heroImageUrl": "https://minefield-app-gray.vercel.app/hero.png",
     "tagline": "Minefield Mini App",
     "ogTitle": "MINEFIELD - Web3 Minesweeper",
     "ogDescription": "The classic Minesweeper reimagined for Farcaster. Connect, play, survive.",
-    "ogImageUrl": "https://minefield-app-gray.vercel.app/og.png",
-    "requiredChains": ["eip155:8453"],
-    "screenshotUrls": [
-      "https://minefield-app-gray.vercel.app/screenshots/screen1.png",
-      "https://minefield-app-gray.vercel.app/screenshots/screen2.png",
-      "https://minefield-app-gray.vercel.app/screenshots/screen3.png"
-    ]
+    "ogImageUrl": "https://minefield-app.vercel.app/og.png"
   }
 }
