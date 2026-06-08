@@ -1,4 +1,5 @@
 {
+  "outputDirectory": ".",
   "rewrites": [
     {
       "source": "/.well-known/farcaster.json",
