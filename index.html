@@ -1,0 +1,1278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<title>MINEFIELD — Farcaster Mini App</title>
+
+<!-- Farcaster Mini App Embed Meta -->
+<meta name="fc:miniapp" content='{"version":"1","imageUrl":"https://yourdomain.com/og.png","button":{"title":"💣 Play MINEFIELD","action":{"type":"launch_miniapp","url":"https://yourdomain.com","name":"MINEFIELD","splashBackgroundColor":"#0a0e1a"}}}' />
+<meta name="fc:frame" content='{"version":"1","imageUrl":"https://yourdomain.com/og.png","button":{"title":"💣 Play MINEFIELD","action":{"type":"launch_frame","url":"https://yourdomain.com","name":"MINEFIELD","splashBackgroundColor":"#0a0e1a"}}}' />
+
+<!-- Open Graph -->
+<meta property="og:title" content="MINEFIELD — Web3 Minesweeper on Farcaster"/>
+<meta property="og:description" content="The classic Minesweeper, reimagined for the decentralized web. Connect your wallet. Prove your skills. Share your score."/>
+<meta property="og:image" content="https://yourdomain.com/og.png"/>
+<meta property="og:type" content="website"/>
+
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Bebas+Neue&family=Inter:wght@300;400;600&display=swap" rel="stylesheet"/>
+
+<style>
+:root {
+  --bg: #0a0e1a;
+  --bg2: #0f1527;
+  --bg3: #141c35;
+  --accent: #00f5a0;
+  --accent2: #00d4ff;
+  --danger: #ff3b5c;
+  --warn: #ffb800;
+  --text: #e8eeff;
+  --muted: #6b7a99;
+  --border: rgba(0,245,160,0.15);
+  --border2: rgba(0,212,255,0.2);
+  --cell-unrev: #1a2240;
+  --cell-hover: #1f2a50;
+  --cell-rev: #0d1530;
+  --cell-border-light: rgba(255,255,255,0.08);
+  --cell-border-dark: rgba(0,0,0,0.4);
+  --glow: 0 0 20px rgba(0,245,160,0.3);
+  --glow-btn: 0 0 30px rgba(0,245,160,0.4);
+  --radius: 8px;
+  --font-mono: 'Share Tech Mono', monospace;
+  --font-display: 'Bebas Neue', sans-serif;
+  --font-body: 'Inter', sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  min-height: 100vh;
+  overflow-x: hidden;
+  position: relative;
+}
+
+/* Animated background grid */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(0,245,160,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,245,160,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(ellipse at 60% 20%, rgba(0,212,255,0.06) 0%, transparent 50%),
+              radial-gradient(ellipse at 20% 80%, rgba(0,245,160,0.04) 0%, transparent 40%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.app { position: relative; z-index: 1; max-width: 480px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; }
+
+/* ── SPLASH / PROMO SCREEN ── */
+#splash {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1.5rem;
+  text-align: center;
+  animation: fadeIn .4s ease;
+}
+
+@keyframes fadeIn { from { opacity:0; transform: translateY(10px); } to { opacity:1; transform: translateY(0); } }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.6} }
+@keyframes scanline {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
+@keyframes glitch {
+  0%,100%{ clip-path: inset(0 0 95% 0); }
+  20%{ clip-path: inset(30% 0 50% 0); transform: translate(-2px,0); }
+  40%{ clip-path: inset(60% 0 20% 0); transform: translate(2px,0); }
+  60%{ clip-path: inset(10% 0 80% 0); transform: translate(-1px,0); }
+  80%{ clip-path: inset(80% 0 5% 0); transform: translate(1px,0); }
+}
+@keyframes float {
+  0%,100%{ transform: translateY(0); }
+  50%{ transform: translateY(-8px); }
+}
+@keyframes boom {
+  0%{ transform: scale(1); }
+  30%{ transform: scale(1.4); filter: brightness(3); }
+  60%{ transform: scale(0.9); }
+  100%{ transform: scale(1); filter: brightness(1); }
+}
+
+.logo-wrap {
+  position: relative;
+  margin-bottom: 1.5rem;
+  animation: float 4s ease-in-out infinite;
+}
+
+.logo-bomb {
+  font-size: 5rem;
+  line-height: 1;
+  filter: drop-shadow(0 0 20px rgba(255,59,92,0.6)) drop-shadow(0 0 40px rgba(255,59,92,0.3));
+}
+
+.logo-title {
+  font-family: var(--font-display);
+  font-size: clamp(3.5rem, 14vw, 5.5rem);
+  letter-spacing: 0.1em;
+  color: transparent;
+  background: linear-gradient(135deg, #00f5a0 0%, #00d4ff 50%, #7b4fff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  text-shadow: none;
+  position: relative;
+  line-height: 1;
+  margin-bottom: 0.25rem;
+}
+
+.logo-title::after {
+  content: 'MINEFIELD';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, #00f5a0, #00d4ff, #7b4fff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: glitch 8s infinite;
+  opacity: 0.5;
+}
+
+.logo-sub {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.4em;
+  color: var(--accent2);
+  text-transform: uppercase;
+}
+
+.promo-pitch {
+  max-width: 340px;
+  margin: 0 auto 2rem;
+}
+
+.promo-pitch h2 {
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 6vw, 2.2rem);
+  letter-spacing: 0.05em;
+  color: var(--text);
+  margin-bottom: 0.75rem;
+  line-height: 1.1;
+}
+
+.promo-pitch h2 span { color: var(--accent); }
+
+.promo-pitch p {
+  font-size: 0.875rem;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.promo-tags {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+
+.tag {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  padding: 4px 10px;
+  border-radius: 99px;
+  letter-spacing: 0.1em;
+}
+.tag-green { background: rgba(0,245,160,0.1); color: var(--accent); border: 0.5px solid rgba(0,245,160,0.3); }
+.tag-blue { background: rgba(0,212,255,0.1); color: var(--accent2); border: 0.5px solid rgba(0,212,255,0.3); }
+.tag-red { background: rgba(255,59,92,0.1); color: var(--danger); border: 0.5px solid rgba(255,59,92,0.3); }
+
+/* Wallet Connect Section */
+.wallet-section {
+  width: 100%;
+  max-width: 340px;
+  margin: 0 auto 1.5rem;
+  background: var(--bg2);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem 1.25rem;
+}
+
+.wallet-title {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 0.75rem;
+}
+
+.wallet-btns { display: flex; gap: 8px; }
+
+.wallet-btn {
+  flex: 1;
+  padding: 10px 8px;
+  border-radius: var(--radius);
+  border: 0.5px solid var(--border2);
+  background: var(--bg3);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  transition: all .2s;
+  letter-spacing: 0.05em;
+}
+.wallet-btn:hover { background: rgba(0,212,255,0.1); border-color: var(--accent2); transform: translateY(-1px); }
+.wallet-btn.connected { background: rgba(0,245,160,0.08); border-color: var(--accent); color: var(--accent); }
+.wallet-btn .wallet-icon { font-size: 1.4rem; line-height: 1; }
+.wallet-status {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--accent);
+  margin-top: 8px;
+  text-align: center;
+  min-height: 14px;
+  letter-spacing: 0.1em;
+}
+
+/* Language selector */
+.lang-section {
+  width: 100%;
+  max-width: 340px;
+  margin: 0 auto 1.5rem;
+}
+
+.lang-label {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.2em;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 0.5rem;
+  text-align: left;
+}
+
+.lang-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+
+.lang-btn {
+  padding: 8px 4px;
+  border-radius: 6px;
+  border: 0.5px solid var(--border);
+  background: var(--bg2);
+  color: var(--muted);
+  font-size: 0.65rem;
+  font-family: var(--font-mono);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  transition: all .15s;
+}
+.lang-btn .flag { font-size: 1.2rem; line-height: 1; }
+.lang-btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(0,245,160,0.05); }
+.lang-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(0,245,160,0.1); }
+
+/* Play button */
+.play-btn {
+  width: 100%;
+  max-width: 340px;
+  padding: 18px;
+  border-radius: var(--radius);
+  border: none;
+  background: linear-gradient(135deg, #00f5a0, #00d4ff);
+  color: #0a0e1a;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  box-shadow: var(--glow-btn);
+  transition: all .2s;
+  margin-bottom: 1rem;
+}
+.play-btn:hover { transform: translateY(-2px); box-shadow: 0 0 40px rgba(0,245,160,0.6); }
+.play-btn:active { transform: scale(0.98); }
+
+/* ── DIFFICULTY SCREEN ── */
+#diff-screen {
+  display: none;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1.5rem;
+  animation: fadeIn .3s ease;
+}
+
+.screen-title {
+  font-family: var(--font-display);
+  font-size: 2.5rem;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+  margin-bottom: 0.25rem;
+  text-shadow: var(--glow);
+}
+
+.screen-sub {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--muted);
+  letter-spacing: 0.2em;
+  margin-bottom: 2rem;
+}
+
+.diff-cards { display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 340px; margin-bottom: 1.5rem; }
+
+.diff-card {
+  padding: 1.25rem 1.5rem;
+  border-radius: var(--radius);
+  border: 0.5px solid var(--border);
+  background: var(--bg2);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  transition: all .2s;
+  position: relative;
+  overflow: hidden;
+}
+.diff-card::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  border-radius: 3px 0 0 3px;
+}
+.diff-easy::before { background: var(--accent); }
+.diff-medium::before { background: var(--warn); }
+.diff-hard::before { background: var(--danger); }
+
+.diff-card:hover { background: var(--bg3); transform: translateX(4px); }
+.diff-icon { font-size: 2rem; }
+.diff-info { flex: 1; }
+.diff-name { font-family: var(--font-display); font-size: 1.4rem; letter-spacing: 0.05em; }
+.diff-stats { font-family: var(--font-mono); font-size: 0.68rem; color: var(--muted); margin-top: 2px; }
+.diff-badge { font-family: var(--font-mono); font-size: 0.65rem; padding: 3px 8px; border-radius: 99px; }
+.badge-easy { background: rgba(0,245,160,0.1); color: var(--accent); }
+.badge-med { background: rgba(255,184,0,0.1); color: var(--warn); }
+.badge-hard { background: rgba(255,59,92,0.1); color: var(--danger); }
+
+/* ── GAME SCREEN ── */
+#game-screen {
+  display: none;
+  flex: 1;
+  flex-direction: column;
+  padding: 0.75rem;
+  animation: fadeIn .3s ease;
+}
+
+.hud {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background: var(--bg2);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 0.75rem;
+}
+
+.hud-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 64px;
+}
+.hud-label { font-family: var(--font-mono); font-size: 0.6rem; color: var(--muted); letter-spacing: 0.15em; text-transform: uppercase; }
+.hud-val { font-family: var(--font-mono); font-size: 1.1rem; font-weight: 600; color: var(--text); }
+.hud-val.danger { color: var(--danger); animation: pulse 1s infinite; }
+
+.hud-center { text-align: center; cursor: pointer; }
+.hud-emoji { font-size: 1.8rem; line-height: 1; filter: drop-shadow(0 0 8px rgba(255,255,255,0.3)); }
+
+.board-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#board {
+  display: inline-grid;
+  gap: 2px;
+  padding: 8px;
+  background: var(--bg2);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: inset 0 0 30px rgba(0,0,0,0.5);
+}
+
+.cell {
+  width: var(--cell-size, 34px);
+  height: var(--cell-size, 34px);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: calc(var(--cell-size, 34px) * 0.45);
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+  transition: background .1s, transform .1s;
+  border: 0.5px solid var(--cell-border-light);
+  box-shadow: inset 1px 1px 0 rgba(255,255,255,0.06);
+  background: var(--cell-unrev);
+  position: relative;
+  overflow: hidden;
+}
+
+.cell:hover:not(.revealed):not(.flagged) {
+  background: var(--cell-hover);
+  transform: scale(0.95);
+}
+
+.cell.flagged { background: rgba(255,184,0,0.1); border-color: rgba(255,184,0,0.4); }
+.cell.question { background: rgba(0,212,255,0.08); border-color: rgba(0,212,255,0.3); }
+
+.cell.revealed {
+  background: var(--cell-rev);
+  border-color: var(--cell-border-dark);
+  box-shadow: inset 1px 1px 3px rgba(0,0,0,0.4);
+  cursor: default;
+}
+
+.cell.revealed.mine {
+  background: rgba(255,59,92,0.2);
+  border-color: var(--danger);
+  animation: boom .3s ease;
+}
+
+.cell.revealed.mine-death {
+  background: rgba(255,59,92,0.5);
+  border-color: var(--danger);
+}
+
+/* Number colors */
+.n1 { color: #00d4ff; }
+.n2 { color: #00f5a0; }
+.n3 { color: #ff3b5c; }
+.n4 { color: #7b4fff; }
+.n5 { color: #ff6b1a; }
+.n6 { color: #00ffd4; }
+.n7 { color: #ff3baa; }
+.n8 { color: #ffffff; }
+
+/* ── WIN/LOSE OVERLAY ── */
+#result-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(10,14,26,0.92);
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+  animation: fadeIn .3s ease;
+}
+
+.result-box {
+  background: var(--bg2);
+  border: 0.5px solid var(--border);
+  border-radius: 12px;
+  padding: 2rem 2rem;
+  text-align: center;
+  max-width: 320px;
+  width: 90%;
+  box-shadow: 0 0 60px rgba(0,0,0,0.6);
+}
+
+.result-emoji { font-size: 4rem; margin-bottom: 0.75rem; display: block; }
+.result-title { font-family: var(--font-display); font-size: 2.5rem; letter-spacing: 0.1em; margin-bottom: 0.5rem; }
+.result-title.win { color: var(--accent); text-shadow: var(--glow); }
+.result-title.lose { color: var(--danger); }
+
+.result-stats {
+  display: flex;
+  justify-content: center;
+  gap: 1.5rem;
+  margin: 1rem 0 1.5rem;
+  padding: 0.75rem;
+  background: var(--bg3);
+  border-radius: var(--radius);
+}
+
+.result-stat { text-align: center; }
+.result-stat-val { font-family: var(--font-mono); font-size: 1.1rem; font-weight: 600; color: var(--text); }
+.result-stat-lbl { font-family: var(--font-mono); font-size: 0.6rem; color: var(--muted); letter-spacing: 0.1em; margin-top: 2px; }
+
+.result-btns { display: flex; flex-direction: column; gap: 8px; }
+.result-btn {
+  width: 100%;
+  padding: 12px;
+  border-radius: var(--radius);
+  border: 0.5px solid;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  cursor: pointer;
+  letter-spacing: 0.1em;
+  transition: all .2s;
+}
+.btn-primary { background: linear-gradient(135deg, #00f5a0, #00d4ff); color: #0a0e1a; border-color: transparent; font-weight: 600; }
+.btn-secondary { background: transparent; color: var(--muted); border-color: var(--border); }
+.btn-share { background: rgba(0,212,255,0.1); color: var(--accent2); border-color: var(--border2); }
+.result-btn:hover { transform: translateY(-1px); opacity: 0.9; }
+
+/* Back button */
+.back-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 0.5px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  cursor: pointer;
+  letter-spacing: 0.1em;
+  transition: all .15s;
+  margin-bottom: 0.5rem;
+}
+.back-btn:hover { color: var(--text); border-color: var(--accent); }
+
+/* Long-press indicator */
+.long-press-hint {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--muted);
+  text-align: center;
+  letter-spacing: 0.1em;
+  margin-top: 0.5rem;
+  opacity: 0.7;
+}
+
+/* Scanline effect on game over */
+.scanline {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,0.1) 2px,
+    rgba(0,0,0,0.1) 4px
+  );
+  z-index: 50;
+  opacity: 0;
+  transition: opacity .3s;
+}
+.scanline.active { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div class="scanline" id="scanline"></div>
+<div id="result-overlay"></div>
+
+<div class="app">
+
+  <!-- ══════════════════ SPLASH SCREEN ══════════════════ -->
+  <div id="splash">
+    <div class="logo-wrap">
+      <div class="logo-bomb">💣</div>
+    </div>
+    <div class="logo-title">MINEFIELD</div>
+    <div class="logo-sub" id="logo-sub">WEB3 MINESWEEPER</div>
+
+    <div style="height:1.5rem"></div>
+
+    <div class="promo-pitch">
+      <h2 id="promo-title"><span>Survive</span> the field.<br/>Earn your glory.</h2>
+      <p id="promo-desc">The classic Minesweeper reborn for the decentralized web. One wrong click ends everything. Connect your wallet, choose your difficulty, and prove you have the sharpest mind on Farcaster.</p>
+    </div>
+
+    <div class="promo-tags">
+      <span class="tag tag-green" id="tag1">⚡ On-chain scores</span>
+      <span class="tag tag-blue" id="tag2">💎 Web3 native</span>
+      <span class="tag tag-red" id="tag3">💣 High stakes</span>
+    </div>
+
+    <!-- Language selector -->
+    <div class="lang-section">
+      <div class="lang-label" id="lang-label">Choose language / Idioma</div>
+      <div class="lang-grid">
+        <button class="lang-btn active" onclick="setLang('en')"><span class="flag">🇺🇸</span><span>EN</span></button>
+        <button class="lang-btn" onclick="setLang('es')"><span class="flag">🇪🇸</span><span>ES</span></button>
+        <button class="lang-btn" onclick="setLang('pt')"><span class="flag">🇧🇷</span><span>PT</span></button>
+        <button class="lang-btn" onclick="setLang('fr')"><span class="flag">🇫🇷</span><span>FR</span></button>
+        <button class="lang-btn" onclick="setLang('ja')"><span class="flag">🇯🇵</span><span>JA</span></button>
+        <button class="lang-btn" onclick="setLang('zh')"><span class="flag">🇨🇳</span><span>ZH</span></button>
+        <button class="lang-btn" onclick="setLang('ko')"><span class="flag">🇰🇷</span><span>KO</span></button>
+        <button class="lang-btn" onclick="setLang('de')"><span class="flag">🇩🇪</span><span>DE</span></button>
+        <button class="lang-btn" onclick="setLang('it')"><span class="flag">🇮🇹</span><span>IT</span></button>
+        <button class="lang-btn" onclick="setLang('ar')"><span class="flag">🇸🇦</span><span>AR</span></button>
+      </div>
+    </div>
+
+    <!-- Wallet Connect -->
+    <div class="wallet-section">
+      <div class="wallet-title" id="wallet-label">🔗 Connect to play on-chain</div>
+      <div class="wallet-btns">
+        <button class="wallet-btn" id="btn-farcaster" onclick="connectFarcaster()">
+          <span class="wallet-icon">🟣</span>
+          <span>Farcaster</span>
+        </button>
+        <button class="wallet-btn" id="btn-base" onclick="connectBase()">
+          <span class="wallet-icon">🔵</span>
+          <span>Base App</span>
+        </button>
+        <button class="wallet-btn" id="btn-wallet" onclick="connectWallet()">
+          <span class="wallet-icon">🦊</span>
+          <span>MetaMask</span>
+        </button>
+      </div>
+      <div class="wallet-status" id="wallet-status"></div>
+    </div>
+
+    <button class="play-btn" onclick="showDifficulty()" id="play-btn">PLAY NOW</button>
+
+    <div style="font-family:var(--font-mono);font-size:0.65rem;color:var(--muted);letter-spacing:0.1em;text-align:center;">
+      v1.0 · Built for Farcaster Mini Apps
+    </div>
+  </div>
+
+  <!-- ══════════════════ DIFFICULTY SCREEN ══════════════════ -->
+  <div id="diff-screen">
+    <button class="back-btn" onclick="showSplash()">← <span id="back-txt">BACK</span></button>
+    <div class="screen-title" id="diff-title">DIFFICULTY</div>
+    <div class="screen-sub" id="diff-sub">CHOOSE YOUR FATE</div>
+
+    <div class="diff-cards">
+      <div class="diff-card diff-easy" onclick="startGame('easy')">
+        <div class="diff-icon">🟢</div>
+        <div class="diff-info">
+          <div class="diff-name" id="d-easy">ROOKIE</div>
+          <div class="diff-stats">9×9 · 10 mines</div>
+        </div>
+        <div class="diff-badge badge-easy" id="d-easy-b">SAFE</div>
+      </div>
+      <div class="diff-card diff-medium" onclick="startGame('medium')">
+        <div class="diff-icon">🟡</div>
+        <div class="diff-info">
+          <div class="diff-name" id="d-med">VETERAN</div>
+          <div class="diff-stats">16×16 · 40 mines</div>
+        </div>
+        <div class="diff-badge badge-med" id="d-med-b">RISKY</div>
+      </div>
+      <div class="diff-card diff-hard" onclick="startGame('hard')">
+        <div class="diff-icon">🔴</div>
+        <div class="diff-info">
+          <div class="diff-name" id="d-hard">ELITE</div>
+          <div class="diff-stats">16×30 · 99 mines</div>
+        </div>
+        <div class="diff-badge badge-hard" id="d-hard-b">LETHAL</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════ GAME SCREEN ══════════════════ -->
+  <div id="game-screen">
+    <button class="back-btn" onclick="showDifficulty()">← <span id="back-game-txt">MENU</span></button>
+
+    <div class="hud">
+      <div class="hud-stat">
+        <span class="hud-label" id="hud-mines-lbl">MINES</span>
+        <span class="hud-val danger" id="hud-mines">10</span>
+      </div>
+      <div class="hud-stat hud-center" onclick="resetGame()">
+        <span class="hud-emoji" id="face">😐</span>
+      </div>
+      <div class="hud-stat">
+        <span class="hud-label" id="hud-time-lbl">TIME</span>
+        <span class="hud-val" id="hud-timer">000</span>
+      </div>
+    </div>
+
+    <div class="board-wrap">
+      <div id="board"></div>
+    </div>
+
+    <div class="long-press-hint" id="lp-hint">Long press / Right click to flag 🚩</div>
+  </div>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+// TRANSLATIONS
+// ═══════════════════════════════════════════
+const LANGS = {
+  en: {
+    sub: 'WEB3 MINESWEEPER',
+    promoTitle: '<span>Survive</span> the field.<br/>Earn your glory.',
+    promoDesc: 'The classic Minesweeper reborn for the decentralized web. One wrong click ends everything. Connect your wallet, choose your difficulty, and prove you have the sharpest mind on Farcaster.',
+    tag1: '⚡ On-chain scores', tag2: '💎 Web3 native', tag3: '💣 High stakes',
+    walletLabel: '🔗 Connect to play on-chain',
+    play: 'PLAY NOW',
+    back: 'BACK', backGame: 'MENU',
+    diffTitle: 'DIFFICULTY', diffSub: 'CHOOSE YOUR FATE',
+    easy: 'ROOKIE', med: 'VETERAN', hard: 'ELITE',
+    easyB: 'SAFE', medB: 'RISKY', hardB: 'LETHAL',
+    mines: 'MINES', time: 'TIME',
+    hint: 'Long press / Right click to flag 🚩',
+    winTitle: 'FIELD CLEARED!', loseTitle: 'GAME OVER',
+    playAgain: '🔄 PLAY AGAIN', toMenu: '← MENU', share: '📤 SHARE SCORE',
+    statTime: 'TIME', statMines: 'MINES', statDiff: 'LEVEL',
+    winMsg: 'You survived the field!', loseMsg: 'Better luck next time…',
+    connecting: '🔄 CONNECTING...',
+    farcasterOk: '✓ FARCASTER CONNECTED',
+    baseOk: '✓ BASE APP CONNECTED',
+    walletOk: '✓ WALLET CONNECTED',
+    langLabel: 'Choose language / Idioma',
+  },
+  es: {
+    sub: 'BUSCAMINAS WEB3',
+    promoTitle: '<span>Sobrevivé</span> el campo.<br/>Ganate la gloria.',
+    promoDesc: 'El clásico Buscaminas renacido para la web descentralizada. Un click equivocado lo arruina todo. Conectá tu wallet, elegí la dificultad y demostrá que sos el más rápido de Farcaster.',
+    tag1: '⚡ Puntajes on-chain', tag2: '💎 Web3 nativo', tag3: '💣 Alta dificultad',
+    walletLabel: '🔗 Conectá para jugar on-chain',
+    play: 'JUGAR AHORA',
+    back: 'VOLVER', backGame: 'MENÚ',
+    diffTitle: 'DIFICULTAD', diffSub: 'ELEGÍ TU DESTINO',
+    easy: 'NOVATO', med: 'VETERANO', hard: 'ÉLITE',
+    easyB: 'SEGURO', medB: 'RIESGOSO', hardB: 'LETAL',
+    mines: 'MINAS', time: 'TIEMPO',
+    hint: 'Mantené pulsado para marcar 🚩',
+    winTitle: '¡CAMPO DESPEJADO!', loseTitle: 'GAME OVER',
+    playAgain: '🔄 JUGAR DE NUEVO', toMenu: '← MENÚ', share: '📤 COMPARTIR',
+    statTime: 'TIEMPO', statMines: 'MINAS', statDiff: 'NIVEL',
+    winMsg: '¡Sobreviviste al campo!', loseMsg: 'Mejor suerte la próxima…',
+    connecting: '🔄 CONECTANDO...',
+    farcasterOk: '✓ FARCASTER CONECTADO',
+    baseOk: '✓ BASE APP CONECTADO',
+    walletOk: '✓ WALLET CONECTADA',
+    langLabel: 'Elegí tu idioma',
+  },
+  pt: {
+    sub: 'CAMPO MINADO WEB3',
+    promoTitle: '<span>Sobreviva</span> ao campo.<br/>Conquiste sua glória.',
+    promoDesc: 'O clássico Campo Minado renascido para a web descentralizada. Um clique errado acaba com tudo. Conecte sua carteira, escolha a dificuldade e prove que você é o mais ágil do Farcaster.',
+    tag1: '⚡ Pontos on-chain', tag2: '💎 Web3 nativo', tag3: '💣 Alto risco',
+    walletLabel: '🔗 Conecte para jogar on-chain',
+    play: 'JOGAR AGORA',
+    back: 'VOLTAR', backGame: 'MENU',
+    diffTitle: 'DIFICULDADE', diffSub: 'ESCOLHA SEU DESTINO',
+    easy: 'NOVATO', med: 'VETERANO', hard: 'ELITE',
+    easyB: 'SEGURO', medB: 'ARRISCADO', hardB: 'LETAL',
+    mines: 'MINAS', time: 'TEMPO',
+    hint: 'Pressione longo para marcar 🚩',
+    winTitle: 'CAMPO LIMPO!', loseTitle: 'FIM DE JOGO',
+    playAgain: '🔄 JOGAR DE NOVO', toMenu: '← MENU', share: '📤 COMPARTILHAR',
+    statTime: 'TEMPO', statMines: 'MINAS', statDiff: 'NÍVEL',
+    winMsg: 'Você sobreviveu ao campo!', loseMsg: 'Melhor sorte da próxima vez…',
+    connecting: '🔄 CONECTANDO...',
+    farcasterOk: '✓ FARCASTER CONECTADO',
+    baseOk: '✓ BASE APP CONECTADO',
+    walletOk: '✓ CARTEIRA CONECTADA',
+    langLabel: 'Escolha o idioma',
+  },
+  fr: {
+    sub: 'DÉMINEUR WEB3',
+    promoTitle: '<span>Survivez</span> au champ.<br/>Gagnez votre gloire.',
+    promoDesc: 'Le classique Démineur réinventé pour le web décentralisé. Un mauvais clic et tout s\'arrête. Connectez votre portefeuille, choisissez la difficulté et prouvez que vous êtes le meilleur sur Farcaster.',
+    tag1: '⚡ Scores on-chain', tag2: '💎 Web3 natif', tag3: '💣 Haute tension',
+    walletLabel: '🔗 Connecter pour jouer on-chain',
+    play: 'JOUER MAINTENANT',
+    back: 'RETOUR', backGame: 'MENU',
+    diffTitle: 'DIFFICULTÉ', diffSub: 'CHOISISSEZ VOTRE DESTIN',
+    easy: 'DÉBUTANT', med: 'VÉTÉRAN', hard: 'ÉLITE',
+    easyB: 'SÛR', medB: 'RISQUÉ', hardB: 'LÉTAL',
+    mines: 'MINES', time: 'TEMPS',
+    hint: 'Appui long / Clic droit pour marquer 🚩',
+    winTitle: 'CHAMP NETTOYÉ!', loseTitle: 'PARTIE TERMINÉE',
+    playAgain: '🔄 REJOUER', toMenu: '← MENU', share: '📤 PARTAGER',
+    statTime: 'TEMPS', statMines: 'MINES', statDiff: 'NIVEAU',
+    winMsg: 'Vous avez survécu!', loseMsg: 'Meilleure chance la prochaine fois…',
+    connecting: '🔄 CONNEXION...',
+    farcasterOk: '✓ FARCASTER CONNECTÉ',
+    baseOk: '✓ BASE APP CONNECTÉ',
+    walletOk: '✓ PORTEFEUILLE CONNECTÉ',
+    langLabel: 'Choisir la langue',
+  },
+  ja: {
+    sub: 'WEB3 マインスイーパー',
+    promoTitle: '<span>地雷原</span>を生き延びろ。<br/>栄光を掴め。',
+    promoDesc: '分散型ウェブのために生まれ変わったクラシックゲーム。一度のミスが命取り。ウォレットを接続し、難易度を選び、Farcasterで最高の頭脳を証明せよ。',
+    tag1: '⚡ オンチェーンスコア', tag2: '💎 Web3ネイティブ', tag3: '💣 高難度',
+    walletLabel: '🔗 接続してプレイ',
+    play: 'プレイ開始',
+    back: '戻る', backGame: 'メニュー',
+    diffTitle: '難易度', diffSub: '運命を選べ',
+    easy: '初心者', med: 'ベテラン', hard: 'エリート',
+    easyB: '安全', medB: '危険', hardB: '致命的',
+    mines: '地雷', time: '時間',
+    hint: '長押しでフラグ 🚩',
+    winTitle: 'フィールドクリア！', loseTitle: 'ゲームオーバー',
+    playAgain: '🔄 もう一度', toMenu: '← メニュー', share: '📤 スコアを共有',
+    statTime: '時間', statMines: '地雷', statDiff: 'レベル',
+    winMsg: '生き延びた！', loseMsg: '次は頑張れ…',
+    connecting: '🔄 接続中...',
+    farcasterOk: '✓ FARCASTER接続済',
+    baseOk: '✓ BASE APP接続済',
+    walletOk: '✓ ウォレット接続済',
+    langLabel: '言語を選択',
+  },
+  zh: { sub: 'WEB3扫雷', promoTitle: '<span>穿越</span>雷区。<br/>赢得荣耀。', promoDesc: '经典扫雷游戏的去中心化重生。一次错误点击，游戏结束。连接钱包，选择难度，在Farcaster上证明你的智慧。', tag1: '⚡ 链上分数', tag2: '💎 Web3原生', tag3: '💣 高风险', walletLabel: '🔗 连接以在链上游戏', play: '立即游戏', back: '返回', backGame: '菜单', diffTitle: '难度', diffSub: '选择你的命运', easy: '新手', med: '老兵', hard: '精英', easyB: '安全', medB: '危险', hardB: '致命', mines: '地雷', time: '时间', hint: '长按标记旗帜 🚩', winTitle: '区域清除！', loseTitle: '游戏结束', playAgain: '🔄 再玩一次', toMenu: '← 菜单', share: '📤 分享分数', statTime: '时间', statMines: '地雷', statDiff: '级别', winMsg: '你成功了！', loseMsg: '下次加油…', connecting: '🔄 连接中...', farcasterOk: '✓ FARCASTER已连接', baseOk: '✓ BASE APP已连接', walletOk: '✓ 钱包已连接', langLabel: '选择语言' },
+  ko: { sub: 'WEB3 지뢰찾기', promoTitle: '<span>지뢰밭</span>을 헤쳐나가라.<br/>영광을 차지하라.', promoDesc: '분산 웹을 위해 재탄생한 클래식 게임. 한 번의 실수가 모든 것을 끝냅니다. 지갑을 연결하고 난이도를 선택하여 Farcaster에서 실력을 증명하세요.', tag1: '⚡ 온체인 점수', tag2: '💎 Web3 네이티브', tag3: '💣 고위험', walletLabel: '🔗 연결하여 온체인 플레이', play: '지금 플레이', back: '뒤로', backGame: '메뉴', diffTitle: '난이도', diffSub: '운명을 선택하라', easy: '초보자', med: '베테랑', hard: '엘리트', easyB: '안전', medB: '위험', hardB: '치명적', mines: '지뢰', time: '시간', hint: '길게 눌러 깃발 세우기 🚩', winTitle: '필드 클리어!', loseTitle: '게임 오버', playAgain: '🔄 다시 플레이', toMenu: '← 메뉴', share: '📤 점수 공유', statTime: '시간', statMines: '지뢰', statDiff: '레벨', winMsg: '생존했습니다!', loseMsg: '다음에는 더 잘할 수 있어요…', connecting: '🔄 연결 중...', farcasterOk: '✓ FARCASTER 연결됨', baseOk: '✓ BASE APP 연결됨', walletOk: '✓ 지갑 연결됨', langLabel: '언어 선택' },
+  de: { sub: 'WEB3 MINESWEEPER', promoTitle: '<span>Überlebe</span> das Minenfeld.<br/>Erkämpfe deinen Ruhm.', promoDesc: 'Das klassische Minesweeper für das dezentrale Web neu geboren. Ein falscher Klick und alles ist vorbei. Verbinde dein Wallet, wähle die Schwierigkeit und beweise dich auf Farcaster.', tag1: '⚡ On-chain Punkte', tag2: '💎 Web3 nativ', tag3: '💣 Hochrisiko', walletLabel: '🔗 Verbinden zum On-chain spielen', play: 'JETZT SPIELEN', back: 'ZURÜCK', backGame: 'MENÜ', diffTitle: 'SCHWIERIGKEIT', diffSub: 'WÄHLE DEIN SCHICKSAL', easy: 'ANFÄNGER', med: 'VETERAN', hard: 'ELITE', easyB: 'SICHER', medB: 'RISKANT', hardB: 'TÖDLICH', mines: 'MINEN', time: 'ZEIT', hint: 'Lang drücken zum Markieren 🚩', winTitle: 'FELD GERÄUMT!', loseTitle: 'SPIEL VORBEI', playAgain: '🔄 NOCHMAL', toMenu: '← MENÜ', share: '📤 TEILEN', statTime: 'ZEIT', statMines: 'MINEN', statDiff: 'STUFE', winMsg: 'Du hast überlebt!', loseMsg: 'Beim nächsten Mal…', connecting: '🔄 VERBINDEN...', farcasterOk: '✓ FARCASTER VERBUNDEN', baseOk: '✓ BASE APP VERBUNDEN', walletOk: '✓ WALLET VERBUNDEN', langLabel: 'Sprache wählen' },
+  it: { sub: 'PERICAMPO WEB3', promoTitle: '<span>Sopravvivi</span> al campo.<br/>Guadagna la gloria.', promoDesc: 'Il classico Campo Minato rinato per il web decentralizzato. Un clic sbagliato e tutto finisce. Connetti il tuo wallet, scegli la difficoltà e dimostra di essere il migliore su Farcaster.', tag1: '⚡ Punteggi on-chain', tag2: '💎 Web3 nativo', tag3: '💣 Alto rischio', walletLabel: '🔗 Connetti per giocare on-chain', play: 'GIOCA ORA', back: 'INDIETRO', backGame: 'MENU', diffTitle: 'DIFFICOLTÀ', diffSub: 'SCEGLI IL TUO DESTINO', easy: 'PRINCIPIANTE', med: 'VETERANO', hard: 'ELITE', easyB: 'SICURO', medB: 'RISCHIOSO', hardB: 'LETALE', mines: 'MINE', time: 'TEMPO', hint: 'Tieni premuto per segnare 🚩', winTitle: 'CAMPO PULITO!', loseTitle: 'GAME OVER', playAgain: '🔄 RIGIOCA', toMenu: '← MENU', share: '📤 CONDIVIDI', statTime: 'TEMPO', statMines: 'MINE', statDiff: 'LIVELLO', winMsg: 'Hai sopravvissuto!', loseMsg: 'Meglio fortuna la prossima…', connecting: '🔄 CONNETTENDO...', farcasterOk: '✓ FARCASTER CONNESSO', baseOk: '✓ BASE APP CONNESSO', walletOk: '✓ WALLET CONNESSA', langLabel: 'Scegli la lingua' },
+  ar: { sub: 'كاسح الألغام Web3', promoTitle: '<span>انجُ</span> من الميدان.<br/>واكتسب مجدك.', promoDesc: 'لعبة كاسح الألغام الكلاسيكية تولد من جديد للويب اللامركزي. نقرة خاطئة واحدة تنهي كل شيء. اربط محفظتك واختر الصعوبة وأثبت أنك الأذكى على فاركاستر.', tag1: '⚡ نقاط على السلسلة', tag2: '💎 Web3 أصلي', tag3: '💣 مخاطر عالية', walletLabel: '🔗 اتصل للعب على السلسلة', play: 'العب الآن', back: 'عودة', backGame: 'القائمة', diffTitle: 'الصعوبة', diffSub: 'اختر مصيرك', easy: 'مبتدئ', med: 'محترف', hard: 'نخبة', easyB: 'آمن', medB: 'خطر', hardB: 'قاتل', mines: 'ألغام', time: 'وقت', hint: 'اضغط مطولاً للإشارة 🚩', winTitle: '!الميدان نظيف', loseTitle: 'انتهت اللعبة', playAgain: '🔄 العب مجدداً', toMenu: '← القائمة', share: '📤 شارك النتيجة', statTime: 'الوقت', statMines: 'الألغام', statDiff: 'المستوى', winMsg: '!نجوت من الميدان', loseMsg: '…حظ أوفر المرة القادمة', connecting: '...🔄 جاري الاتصال', farcasterOk: '✓ فاركاستر متصل', baseOk: '✓ BASE APP متصل', walletOk: '✓ المحفظة متصلة', langLabel: 'اختر اللغة' },
+};
+
+// ═══════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════
+let lang = 'en';
+let connectedWallet = null;
+let difficulty = 'easy';
+let board = [];
+let mines = new Set();
+let revealed = new Set();
+let flagged = new Set();
+let questioned = new Set();
+let gameOver = false;
+let gameWon = false;
+let firstClick = true;
+let timerInterval = null;
+let seconds = 0;
+let rows, cols, mineCount;
+
+const CONFIGS = {
+  easy:   { rows:9,  cols:9,  mines:10 },
+  medium: { rows:16, cols:16, mines:40 },
+  hard:   { rows:16, cols:30, mines:99 },
+};
+
+// ═══════════════════════════════════════════
+// LANGUAGE
+// ═══════════════════════════════════════════
+function setLang(l) {
+  lang = l;
+  const t = LANGS[l] || LANGS.en;
+  document.querySelectorAll('.lang-btn').forEach((b,i) => {
+    const codes = ['en','es','pt','fr','ja','zh','ko','de','it','ar'];
+    b.classList.toggle('active', codes[i] === l);
+  });
+  document.getElementById('logo-sub').textContent = t.sub;
+  document.getElementById('promo-title').innerHTML = t.promoTitle;
+  document.getElementById('promo-desc').textContent = t.promoDesc;
+  document.getElementById('tag1').textContent = t.tag1;
+  document.getElementById('tag2').textContent = t.tag2;
+  document.getElementById('tag3').textContent = t.tag3;
+  document.getElementById('wallet-label').textContent = t.walletLabel;
+  document.getElementById('play-btn').textContent = t.play;
+  document.getElementById('lang-label').textContent = t.langLabel;
+  document.documentElement.dir = l === 'ar' ? 'rtl' : 'ltr';
+  if (connectedWallet) {
+    const statusMap = {farcaster: t.farcasterOk, base: t.baseOk, wallet: t.walletOk};
+    document.getElementById('wallet-status').textContent = statusMap[connectedWallet] || '';
+  }
+}
+
+// ═══════════════════════════════════════════
+// WALLET CONNECT (simulated — replace with real SDK)
+// ═══════════════════════════════════════════
+async function connectFarcaster() {
+  const t = LANGS[lang] || LANGS.en;
+  const s = document.getElementById('wallet-status');
+  const btn = document.getElementById('btn-farcaster');
+  s.textContent = t.connecting;
+  btn.disabled = true;
+  await sleep(1200);
+  // In production: await sdk.actions.ready(); then sdk.context for user data
+  connectedWallet = 'farcaster';
+  s.textContent = t.farcasterOk;
+  btn.classList.add('connected');
+  btn.disabled = false;
+  document.querySelectorAll('.wallet-btn').forEach(b => { if(b !== btn) b.classList.remove('connected'); });
+}
+
+async function connectBase() {
+  const t = LANGS[lang] || LANGS.en;
+  const s = document.getElementById('wallet-status');
+  const btn = document.getElementById('btn-base');
+  s.textContent = t.connecting;
+  btn.disabled = true;
+  await sleep(1200);
+  // In production: use wagmi/viem with Base chain (chainId 8453)
+  connectedWallet = 'base';
+  s.textContent = t.baseOk;
+  btn.classList.add('connected');
+  btn.disabled = false;
+  document.querySelectorAll('.wallet-btn').forEach(b => { if(b !== btn) b.classList.remove('connected'); });
+}
+
+async function connectWallet() {
+  const t = LANGS[lang] || LANGS.en;
+  const s = document.getElementById('wallet-status');
+  const btn = document.getElementById('btn-wallet');
+  if (typeof window.ethereum === 'undefined') {
+    s.textContent = '⚠ MetaMask not detected';
+    return;
+  }
+  s.textContent = t.connecting;
+  btn.disabled = true;
+  try {
+    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+    if (accounts.length > 0) {
+      connectedWallet = 'wallet';
+      s.textContent = t.walletOk + ' · ' + accounts[0].slice(0,6) + '...' + accounts[0].slice(-4);
+      btn.classList.add('connected');
+      document.querySelectorAll('.wallet-btn').forEach(b => { if(b !== btn) b.classList.remove('connected'); });
+    }
+  } catch(e) {
+    s.textContent = '✗ Connection rejected';
+  }
+  btn.disabled = false;
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ═══════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════
+function showSplash() {
+  document.getElementById('splash').style.display = 'flex';
+  document.getElementById('diff-screen').style.display = 'none';
+  document.getElementById('game-screen').style.display = 'none';
+}
+
+function showDifficulty() {
+  const t = LANGS[lang] || LANGS.en;
+  document.getElementById('splash').style.display = 'none';
+  document.getElementById('diff-screen').style.display = 'flex';
+  document.getElementById('game-screen').style.display = 'none';
+  document.getElementById('back-txt').textContent = t.back;
+  document.getElementById('diff-title').textContent = t.diffTitle;
+  document.getElementById('diff-sub').textContent = t.diffSub;
+  document.getElementById('d-easy').textContent = t.easy;
+  document.getElementById('d-med').textContent = t.med;
+  document.getElementById('d-hard').textContent = t.hard;
+  document.getElementById('d-easy-b').textContent = t.easyB;
+  document.getElementById('d-med-b').textContent = t.medB;
+  document.getElementById('d-hard-b').textContent = t.hardB;
+  stopTimer();
+}
+
+function showGame() {
+  document.getElementById('splash').style.display = 'none';
+  document.getElementById('diff-screen').style.display = 'none';
+  document.getElementById('game-screen').style.display = 'flex';
+}
+
+// ═══════════════════════════════════════════
+// GAME LOGIC
+// ═══════════════════════════════════════════
+function startGame(diff) {
+  difficulty = diff;
+  const cfg = CONFIGS[diff];
+  rows = cfg.rows; cols = cfg.cols; mineCount = cfg.mines;
+  showGame();
+  resetGame();
+}
+
+function resetGame() {
+  stopTimer();
+  board = Array.from({length: rows}, () => Array(cols).fill(0));
+  mines = new Set();
+  revealed = new Set();
+  flagged = new Set();
+  questioned = new Set();
+  gameOver = false;
+  gameWon = false;
+  firstClick = true;
+  seconds = 0;
+  document.getElementById('face').textContent = '😐';
+  document.getElementById('hud-timer').textContent = '000';
+  const t = LANGS[lang] || LANGS.en;
+  document.getElementById('hud-mines').textContent = mineCount;
+  document.getElementById('hud-mines-lbl').textContent = t.mines;
+  document.getElementById('hud-time-lbl').textContent = t.time;
+  document.getElementById('back-game-txt').textContent = t.backGame;
+  document.getElementById('lp-hint').textContent = t.hint;
+  document.getElementById('hud-mines').classList.add('danger');
+  document.getElementById('result-overlay').style.display = 'none';
+  document.getElementById('scanline').classList.remove('active');
+  renderBoard();
+}
+
+function placeMines(safeR, safeC) {
+  const avoid = new Set();
+  for(let dr = -1; dr <= 1; dr++)
+    for(let dc = -1; dc <= 1; dc++) {
+      const nr = safeR+dr, nc = safeC+dc;
+      if(nr >= 0 && nr < rows && nc >= 0 && nc < cols)
+        avoid.add(nr*cols+nc);
+    }
+  while(mines.size < mineCount) {
+    const idx = Math.floor(Math.random()*rows*cols);
+    if(!avoid.has(idx)) mines.add(idx);
+  }
+  // Calculate numbers
+  for(let r=0;r<rows;r++) for(let c=0;c<cols;c++) {
+    if(mines.has(r*cols+c)) { board[r][c]=-1; continue; }
+    let cnt=0;
+    for(let dr=-1;dr<=1;dr++) for(let dc=-1;dc<=1;dc++) {
+      const nr=r+dr,nc=c+dc;
+      if(nr>=0&&nr<rows&&nc>=0&&nc<cols&&mines.has(nr*cols+nc)) cnt++;
+    }
+    board[r][c]=cnt;
+  }
+}
+
+function renderBoard() {
+  const b = document.getElementById('board');
+  // Cell size based on cols
+  const maxW = Math.min(window.innerWidth - 48, 460);
+  const cellSize = Math.max(22, Math.min(38, Math.floor((maxW-16-cols*2)/cols)));
+  b.style.gridTemplateColumns = `repeat(${cols}, ${cellSize}px)`;
+  b.style.setProperty('--cell-size', cellSize+'px');
+  b.innerHTML = '';
+  for(let r=0;r<rows;r++) for(let c=0;c<cols;c++) {
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    cell.dataset.r = r; cell.dataset.c = c;
+    setupCellEvents(cell);
+    b.appendChild(cell);
+  }
+  updateBoardUI();
+}
+
+function setupCellEvents(cell) {
+  // Left click
+  cell.addEventListener('click', e => { e.preventDefault(); handleClick(+cell.dataset.r, +cell.dataset.c); });
+  // Right click / long press = flag
+  cell.addEventListener('contextmenu', e => { e.preventDefault(); handleFlag(+cell.dataset.r, +cell.dataset.c); });
+  // Long press for mobile
+  let pressTimer;
+  cell.addEventListener('touchstart', e => { pressTimer = setTimeout(() => { handleFlag(+cell.dataset.r, +cell.dataset.c); }, 400); }, {passive:true});
+  cell.addEventListener('touchend', () => clearTimeout(pressTimer), {passive:true});
+  cell.addEventListener('touchmove', () => clearTimeout(pressTimer), {passive:true});
+}
+
+function handleClick(r, c) {
+  if(gameOver || gameWon) return;
+  const idx = r*cols+c;
+  if(flagged.has(idx) || questioned.has(idx) || revealed.has(idx)) return;
+  if(firstClick) {
+    firstClick = false;
+    placeMines(r, c);
+    startTimer();
+  }
+  if(mines.has(idx)) {
+    explode(r, c);
+    return;
+  }
+  revealCell(r, c);
+  checkWin();
+  updateBoardUI();
+}
+
+function handleFlag(r, c) {
+  if(gameOver || gameWon) return;
+  const idx = r*cols+c;
+  if(revealed.has(idx)) return;
+  if(flagged.has(idx)) {
+    flagged.delete(idx);
+    questioned.add(idx);
+  } else if(questioned.has(idx)) {
+    questioned.delete(idx);
+  } else {
+    flagged.add(idx);
+  }
+  const t = LANGS[lang] || LANGS.en;
+  document.getElementById('hud-mines').textContent = Math.max(0, mineCount - flagged.size);
+  updateBoardUI();
+}
+
+function revealCell(r, c) {
+  const idx = r*cols+c;
+  if(revealed.has(idx) || flagged.has(idx) || mines.has(idx)) return;
+  revealed.add(idx);
+  if(board[r][c] === 0) {
+    for(let dr=-1;dr<=1;dr++) for(let dc=-1;dc<=1;dc++) {
+      const nr=r+dr,nc=c+dc;
+      if(nr>=0&&nr<rows&&nc>=0&&nc<cols&&!revealed.has(nr*cols+nc)) revealCell(nr,nc);
+    }
+  }
+}
+
+function explode(deathR, deathC) {
+  gameOver = true;
+  stopTimer();
+  document.getElementById('face').textContent = '💀';
+  document.getElementById('scanline').classList.add('active');
+  // Reveal all mines
+  mines.forEach(idx => {
+    const r=Math.floor(idx/cols), c=idx%cols;
+    revealed.add(idx);
+  });
+  updateBoardUI();
+  // Mark death cell
+  const cells = document.querySelectorAll('.cell');
+  const deathCell = cells[deathR*cols+deathC];
+  if(deathCell) deathCell.classList.add('mine-death');
+  setTimeout(() => showResult(false), 800);
+}
+
+function checkWin() {
+  if(revealed.size === rows*cols - mineCount) {
+    gameWon = true;
+    stopTimer();
+    document.getElementById('face').textContent = '🏆';
+    setTimeout(() => showResult(true), 300);
+  }
+}
+
+function updateBoardUI() {
+  const cells = document.getElementById('board').children;
+  for(let r=0;r<rows;r++) for(let c=0;c<cols;c++) {
+    const cell = cells[r*cols+c];
+    const idx = r*cols+c;
+    cell.className = 'cell';
+    if(revealed.has(idx)) {
+      cell.classList.add('revealed');
+      if(mines.has(idx)) {
+        cell.classList.add('mine');
+        cell.textContent = '💣';
+      } else if(board[r][c] > 0) {
+        cell.textContent = board[r][c];
+        cell.classList.add('n'+board[r][c]);
+      } else {
+        cell.textContent = '';
+      }
+    } else if(flagged.has(idx)) {
+      cell.classList.add('flagged');
+      cell.textContent = '🚩';
+    } else if(questioned.has(idx)) {
+      cell.classList.add('question');
+      cell.textContent = '❓';
+    } else {
+      cell.textContent = '';
+    }
+  }
+}
+
+// ═══════════════════════════════════════════
+// TIMER
+// ═══════════════════════════════════════════
+function startTimer() {
+  timerInterval = setInterval(() => {
+    seconds++;
+    document.getElementById('hud-timer').textContent = String(seconds).padStart(3,'0');
+    if(seconds >= 999) stopTimer();
+  }, 1000);
+}
+
+function stopTimer() {
+  if(timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+}
+
+// ═══════════════════════════════════════════
+// RESULT OVERLAY
+// ═══════════════════════════════════════════
+function showResult(win) {
+  const t = LANGS[lang] || LANGS.en;
+  const overlay = document.getElementById('result-overlay');
+  const diffLabels = { easy: t.easy, medium: t.med, hard: t.hard };
+
+  overlay.innerHTML = `
+    <div class="result-box">
+      <span class="result-emoji">${win ? '🏆' : '💥'}</span>
+      <div class="result-title ${win ? 'win' : 'lose'}">${win ? t.winTitle : t.loseTitle}</div>
+      <p style="font-size:0.8rem;color:var(--muted);margin-bottom:0.75rem;font-family:var(--font-mono)">${win ? t.winMsg : t.loseMsg}</p>
+      <div class="result-stats">
+        <div class="result-stat"><div class="result-stat-val">${String(seconds).padStart(3,'0')}s</div><div class="result-stat-lbl">${t.statTime}</div></div>
+        <div class="result-stat"><div class="result-stat-val">${mineCount}</div><div class="result-stat-lbl">${t.statMines}</div></div>
+        <div class="result-stat"><div class="result-stat-val">${(diffLabels[difficulty]||'?').slice(0,6)}</div><div class="result-stat-lbl">${t.statDiff}</div></div>
+      </div>
+      <div class="result-btns">
+        <button class="result-btn btn-primary" onclick="startGame('${difficulty}')">${t.playAgain}</button>
+        ${connectedWallet ? `<button class="result-btn btn-share" onclick="shareScore(${win},${seconds})">${t.share}</button>` : ''}
+        <button class="result-btn btn-secondary" onclick="showDifficulty()">${t.toMenu}</button>
+      </div>
+    </div>`;
+  overlay.style.display = 'flex';
+}
+
+function shareScore(win, time) {
+  const t = LANGS[lang] || LANGS.en;
+  const diffLabels = { easy: t.easy, medium: t.med, hard: t.hard };
+  const msg = win
+    ? `💣 I just cleared MINEFIELD on ${diffLabels[difficulty]} in ${time}s! Can you beat me? Play at https://yourdomain.com #Farcaster #MINEFIELD`
+    : `💥 The mines got me on MINEFIELD (${diffLabels[difficulty]}). Challenge accepted. Play at https://yourdomain.com #Farcaster #MINEFIELD`;
+  // In production with Farcaster SDK: sdk.actions.composeCast({ text: msg })
+  if(navigator.share) navigator.share({ text: msg }).catch(()=>{});
+  else { navigator.clipboard?.writeText(msg); alert('Score copied to clipboard!'); }
+}
+
+// ═══════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════
+window.addEventListener('load', () => {
+  // Try to init Farcaster SDK if inside Mini App
+  try {
+    const script = document.createElement('script');
+    script.type = 'module';
+    script.textContent = `
+      try {
+        const { sdk } = await import('https://esm.sh/@farcaster/miniapp-sdk');
+        await sdk.actions.ready();
+        const ctx = await sdk.context;
+        if(ctx?.user?.username) {
+          document.getElementById('wallet-status').textContent = '✓ @' + ctx.user.username;
+          document.getElementById('btn-farcaster').classList.add('connected');
+          window._farcasterUser = ctx.user;
+        }
+      } catch(e) {}
+    `;
+    document.head.appendChild(script);
+  } catch(e) {}
+  setLang('en');
+  showSplash();
+});
+</script>
+</body>
+</html>
